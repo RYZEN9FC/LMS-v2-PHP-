@@ -5,8 +5,8 @@
             <label>From <input type="date" name="from" value="{{ $from->toDateString() }}"></label>
             <label>To <input type="date" name="to" value="{{ $to->toDateString() }}"></label>
             <button class="btn secondary" type="submit">Generate</button>
-            <a class="btn secondary" href="{{ route('reports.interval.excel', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}">Download Excel</a>
-            <a class="btn" href="{{ route('reports.interval.pdf', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}">Download PDF</a>
+            <a class="btn secondary" data-file-download href="{{ route('reports.interval.excel', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}">Download Excel</a>
+            <a class="btn" data-file-download href="{{ route('reports.interval.pdf', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}">Download PDF</a>
         </form>
     </div>
     <section class="card">

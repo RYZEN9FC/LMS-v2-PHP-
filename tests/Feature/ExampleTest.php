@@ -22,6 +22,10 @@ class ExampleTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Current expected stock')
+            ->assertSee('Stock value')
+            ->assertSee('Bottle size')
+            ->assertSee('Landing price')
+            ->assertDontSee('Latest bottle price')
             ->assertSee('ABSOLUT VODKA');
     }
 
@@ -67,9 +71,22 @@ class ExampleTest extends TestCase
         $this->get('/reports/interval/excel?from=2026-09-07&to=2026-09-09')
             ->assertOk()
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->get('/reports/current?as_at=2026-09-09')->assertOk()->assertSee('data-file-download', false);
     }
 
-    public function test_interval_excel_has_one_worksheet_per_daily_interval(): void
+    public function test_a4_pdf_exports_render_successfully(): void
+    {
+        $this->seedAndSignIn();
+
+        $this->get('/reports/current/pdf?as_at=2026-09-09')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->get('/reports/interval/pdf?from=2026-09-07&to=2026-09-09')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_interval_excel_starts_with_an_aggregated_sheet_then_has_one_sheet_per_daily_interval(): void
     {
         $this->seedAndSignIn();
         Product::where('name', 'ABSOLUT VODKA')->update(['spirit_type' => 'Vodka']);
@@ -83,12 +100,17 @@ class ExampleTest extends TestCase
             file_put_contents($path, $response->streamedContent());
             $book = IOFactory::load($path);
 
-            $this->assertSame(['7-8 Sep', '8-9 Sep', '9-10 Sep'], $book->getSheetNames());
+            $this->assertSame(['Summary', '7-8 Sep', '8-9 Sep', '9-10 Sep'], $book->getSheetNames());
             foreach ($book->getWorksheetIterator() as $sheet) {
-                $this->assertSame('VODKA · 1 brands', $sheet->getCell('A4')->getValue());
-                $this->assertSame('Brand', $sheet->getCell('A5')->getValue());
-                $this->assertSame('Opening stock', $sheet->getCell('C5')->getValue());
-                $this->assertSame('Closing stock Total ml', $sheet->getCell('N5')->getValue());
+                $this->assertSame('VODKA · 1 brands', $sheet->getCell('A5')->getValue());
+                $this->assertSame('Brand', $sheet->getCell('A6')->getValue());
+                $this->assertSame('Bottle size', $sheet->getCell('B6')->getValue());
+                $this->assertSame('Opening stock', $sheet->getCell('C6')->getValue());
+                $this->assertSame('Stock received', $sheet->getCell('D6')->getValue());
+                $this->assertSame('Closing stock Bottles + ml', $sheet->getCell('L6')->getValue());
+                $this->assertSame('Landing price', $sheet->getCell('M6')->getValue());
+                $this->assertNotContains('Initial stock introduced', $sheet->rangeToArray('A6:N6')[0]);
+                $this->assertNotContains('Closing stock Total ml', $sheet->rangeToArray('A6:N6')[0]);
                 $this->assertCount(3, $sheet->getTableCollection());
             }
 

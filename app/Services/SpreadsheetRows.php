@@ -11,6 +11,82 @@ use ZipArchive;
 
 class SpreadsheetRows
 {
+    /** Count physical rows before parsing so upload screens can report real progress. */
+    public function rowCounts(string $path): array
+    {
+        $zip = new ZipArchive;
+        if ($zip->open($path) !== true) {
+            $reader = IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+            $book = $reader->load($path);
+            try {
+                $counts = [];
+                foreach ($book->getWorksheetIterator() as $sheet) {
+                    if ($sheet->getHighestDataRow() > 100000) {
+                        $this->fail('The worksheet exceeds 100,000 rows.');
+                    }
+                    $counts[$sheet->getTitle()] = $sheet->getHighestDataRow();
+                }
+
+                return $counts;
+            } finally {
+                $book->disconnectWorksheets();
+            }
+        }
+
+        try {
+            $size = 0;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $size += $zip->statIndex($i)['size'];
+            }
+            if ($size > 150 * 1024 * 1024) {
+                $this->fail('The uncompressed workbook exceeds the 150 MB safety limit.');
+            }
+            $workbookXml = $zip->getFromName('xl/workbook.xml');
+            $relationsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+            if ($workbookXml === false || $relationsXml === false) {
+                $this->fail('The workbook structure is incomplete.');
+            }
+            $workbook = simplexml_load_string($workbookXml, 'SimpleXMLElement', LIBXML_NONET);
+            $relations = simplexml_load_string($relationsXml, 'SimpleXMLElement', LIBXML_NONET);
+            $targets = [];
+            foreach ($relations->children() as $rel) {
+                $targets[(string) $rel['Id']] = (string) $rel['Target'];
+            }
+
+            $counts = [];
+            foreach ($workbook->xpath('//*[local-name()="sheet"]') as $sheet) {
+                $attributes = $sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+                $target = $targets[(string) $attributes['id']] ?? '';
+                $entry = str_starts_with($target, '/') ? ltrim($target, '/') : 'xl/'.$target;
+                if (! preg_match('#^xl/worksheets/[^/]+\.xml$#', $entry)) {
+                    $this->fail('Unsupported worksheet relationship.');
+                }
+                $xml = new XMLReader;
+                if (! $xml->open('zip://'.$path.'#'.$entry, null, LIBXML_NONET)) {
+                    $this->fail('The worksheet could not be opened.');
+                }
+                $count = 0;
+                try {
+                    while ($xml->read()) {
+                        if ($xml->nodeType === XMLReader::ELEMENT && $xml->localName === 'row') {
+                            if (++$count > 100000) {
+                                $this->fail('The worksheet exceeds 100,000 rows.');
+                            }
+                        }
+                    }
+                } finally {
+                    $xml->close();
+                }
+                $counts[(string) $sheet['name']] = $count;
+            }
+
+            return $counts;
+        } finally {
+            $zip->close();
+        }
+    }
+
     /** Read cached underlying values, never formatted cells or executable formulas. */
     public function sheets(string $path): Generator
     {

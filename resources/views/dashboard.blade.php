@@ -6,13 +6,17 @@
         </div>
         <div class="actions"><a class="btn" href="{{ route('reports.current') }}">Open full report</a></div>
     </div>
-    <section class="metric-grid">
-        <div class="metric"><div class="label">Total cost with tax</div><div class="number">{{ \App\Support\StockFormatter::money($totalCostWithTax) }}</div></div>
-        <div class="metric"><div class="label">{{ $rows->contains(fn($r) => $r['stock_value'] === null) ? 'Known cost subtotal (incomplete)' : 'Cost of expected stock' }}</div><div class="number">{{ \App\Support\StockFormatter::money((float) $rows->sum('stock_value')) }}</div></div>
-        <div class="metric"><div class="label">Data shown through</div><div class="number">{{ $asAt->format('j M') }}</div></div>
+    <section class="stock-value-hero">
+        <div class="label">Stock value</div>
+        <div class="number">{{ \App\Support\StockFormatter::money((float) $rows->sum('stock_value')) }}</div>
+        @if($rows->contains(fn($r) => $r['stock_value'] === null))<p class="sub">Known-cost subtotal only — some stock does not yet have a landing cost.</p>@endif
     </section>
     <section class="metric-grid">
+        <div class="metric"><div class="label">Total cost with tax</div><div class="number">{{ \App\Support\StockFormatter::money($totalCostWithTax) }}</div></div>
+        <div class="metric"><div class="label">Data shown through</div><div class="number">{{ $asAt->format('j M') }}</div></div>
         <div class="metric"><div class="label">POS revenue · excludes comp / NC</div><div class="number">{{ \App\Support\StockFormatter::money($financials['revenue']) }}</div></div>
+    </section>
+    <section class="metric-grid">
         <div class="metric"><div class="label">Potential value · includes comp / NC</div><div class="number">{{ \App\Support\StockFormatter::money($financials['potential_revenue']) }}</div></div>
         <div class="metric"><div class="label">Alcohol gross profit · after all consumption</div><div class="number">{{ \App\Support\StockFormatter::money($financials['gross_profit']) }}</div></div>
     </section>

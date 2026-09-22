@@ -25,6 +25,16 @@ class UploadController extends Controller
         return $this->preview($request, $parser, $imports, 'indent', 'pdf', 'excise');
     }
 
+    public function posProgress(Request $request, PosPreviewParser $parser, ReviewedImportService $imports)
+    {
+        return $this->progressPreview($request, $parser, $imports, 'report', 'xlsx,xls', 'pos');
+    }
+
+    public function exciseProgress(Request $request, ExcisePreviewParser $parser, ReviewedImportService $imports)
+    {
+        return $this->progressPreview($request, $parser, $imports, 'indent', 'pdf', 'excise');
+    }
+
     public function review(Request $request, ReviewedImportService $imports)
     {
         $data = $request->validate(['document_id' => ['required', 'uuid'], 'source' => ['required', 'in:pos,excise'],
@@ -60,8 +70,10 @@ class UploadController extends Controller
     {
         $imports = DB::table('imports')->where('outlet_id', $this->outlet())->orderByDesc('id')->paginate(30);
         $documents = DB::table('upload_documents')->where('outlet_id', $this->outlet())->orderByDesc('created_at')->limit(30)->get();
+        $documentMetadata = DB::table('upload_documents')->where('outlet_id', $this->outlet())->get(['id', 'metadata'])
+            ->mapWithKeys(fn ($document) => [$document->id => json_decode($document->metadata ?? '{}', true)]);
 
-        return view('uploads.history', compact('imports', 'documents'));
+        return view('uploads.history', compact('imports', 'documents', 'documentMetadata'));
     }
 
     private function apply(Request $request, ReviewedImportService $imports, string $source)
@@ -100,6 +112,52 @@ class UploadController extends Controller
         $recipes = DB::table('recipes')->where('outlet_id', $outlet)->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return view('uploads.'.$source, compact('preview', 'brands', 'recipes'));
+    }
+
+    private function progressPreview(Request $request, object $parser, ReviewedImportService $imports, string $field, string $types, string $source)
+    {
+        $request->validate([$field => ['required', 'file', 'mimes:'.$types, 'max:15360']]);
+        $file = $request->file($field);
+        $outlet = $this->outlet();
+
+        return response()->stream(function () use ($file, $outlet, $parser, $imports, $source): void {
+            $emit = static function (array $data): void {
+                echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                flush();
+            };
+            $lastPercent = -1;
+            $reportProgress = static function (int $processed, int $total) use ($emit, &$lastPercent): void {
+                $percent = $total > 0 ? (int) floor(($processed / $total) * 100) : 0;
+                if ($processed !== 0 && $processed !== $total && $percent <= $lastPercent) {
+                    return;
+                }
+                $lastPercent = $percent;
+                $emit(['event' => 'progress', 'processed' => $processed, 'total' => $total, 'percent' => $percent]);
+            };
+
+            try {
+                $emit(['event' => 'stage', 'stage' => 'reading', 'message' => 'Preparing document rows…']);
+                $parsed = $parser->parse($file->getRealPath(), $reportProgress);
+                $emit(['event' => 'stage', 'stage' => 'saving', 'message' => 'Saving preview…']);
+                $id = $imports->store($outlet, $source, $parsed, $file->getClientOriginalName());
+                $excluded = $source === 'pos' ? ' '.($parsed['excluded_non_liquor'] ?? 0).' non-liquor rows excluded.' : '';
+                $message = 'Upload read successfully. '.count($parsed['lines']).($source === 'excise' ? ' indent lines read.' : ' liquor POS items read.').$excluded.' Preview is ready; stock has not changed.';
+                $emit(['event' => 'complete', 'redirect' => route('uploads.'.$source, ['document' => $id]), 'message' => $message]);
+            } catch (ValidationException $error) {
+                $message = collect($error->errors())->flatten()->first() ?? 'The file could not be read.';
+                $emit(['event' => 'error', 'message' => $message]);
+            } catch (\Throwable $error) {
+                report($error);
+                $emit(['event' => 'error', 'message' => 'The original file could not be read safely. No stock was changed. Check the file format and try again.']);
+            }
+        }, 200, [
+            'Content-Type' => 'application/x-ndjson; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     private function outlet(): int

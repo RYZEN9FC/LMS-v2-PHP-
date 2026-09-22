@@ -2,7 +2,7 @@
     <div class="page-head"><div><h1>POS sales upload</h1><p class="sub">Upload the Item Wise Sales Report exported from the POS.</p></div></div>
     <section class="card upload-card">
         <div class="pad"><h2>Upload report</h2><p class="sub">Excel (.xlsx or .xls): Item Wise Sales Report or Item Wise Customer Report. Use customer reports for actual daily sales.</p></div>
-        <div class="upload-body"><form method="post" enctype="multipart/form-data">@csrf<label class="drop-zone"><input type="file" name="report" accept=".xlsx,.xls" required><span>Select POS Excel file</span><small data-file-name>Excel workbook (.xlsx or .xls)</small></label><button class="btn" type="submit" style="margin-top:16px">Upload and preview</button></form><p class="note">Nothing changes stock at this stage. The report is only read and checked.</p></div>
+        <div class="upload-body"><form method="post" enctype="multipart/form-data" data-upload-progress-form data-progress-url="{{ route('uploads.pos.progress') }}">@csrf<label class="drop-zone"><input type="file" name="report" accept=".xlsx,.xls" required><span>Select POS Excel file</span><small data-file-name>Excel workbook (.xlsx or .xls)</small></label><button class="btn" type="submit" style="margin-top:16px">Upload and preview</button>@include('components.upload-progress')</form><p class="note">Nothing changes stock at this stage. The report is only read and checked.</p></div>
     </section>
     @if($preview)
     <section class="card" style="margin-top:16px"><div class="pad"><h2>POS preview</h2><p class="sub">{{ $preview['file'] }}</p>

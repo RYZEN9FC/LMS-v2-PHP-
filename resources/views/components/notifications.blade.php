@@ -65,6 +65,11 @@
         sessionStorage.removeItem('pegwise-notice');
         window.notify({title:'Stock updated', message:carriedNotice});
     }
+    const uploadNotice = sessionStorage.getItem('pegwise-upload-notice');
+    if (uploadNotice) {
+        sessionStorage.removeItem('pegwise-upload-notice');
+        window.notify({title:'Upload read successfully', message:uploadNotice});
+    }
     // Native required/min/max validation occurs before form submission.
     let invalidNotice;
     document.addEventListener('invalid', event => {

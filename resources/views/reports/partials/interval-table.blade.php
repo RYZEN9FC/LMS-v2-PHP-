@@ -35,7 +35,7 @@
             <th rowspan="3" class="group">Total indent refill<br>{{ $from->format('j M') }} – {{ $to->format('j M') }}</th>
             <th colspan="2" rowspan="2" class="group">Total POS stock sale</th>
             <th colspan="2" rowspan="2" class="group">Expected stock<br>end {{ $to->format('j M') }}</th>
-            <th rowspan="3">Latest bottle price</th>
+            <th rowspan="3">Landing price</th>
             <th rowspan="3">Stock cost</th>
         </tr>
         <tr>

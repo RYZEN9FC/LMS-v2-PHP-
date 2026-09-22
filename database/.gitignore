@@ -1,1 +1,3 @@
 *.sqlite*
+/backup/*.sql
+/backup/*.sha256

@@ -25,7 +25,7 @@ class AuthTenantTest extends TestCase
         $this->seed();
 
         $this->post('/login', ['email' => 'demo@example.com', 'password' => 'password'])
-            ->assertRedirect('/');
+            ->assertRedirect('/modules');
         $this->assertAuthenticated();
 
         $this->post('/logout')->assertRedirect('/login');

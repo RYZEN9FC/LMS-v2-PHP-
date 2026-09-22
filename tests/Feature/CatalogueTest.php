@@ -44,10 +44,11 @@ class CatalogueTest extends TestCase
         $this->get('/brands?edit='.$id)->assertOk()->assertSee('Test Gin')->assertSee('value="750"', false)->assertDontSee('value="750.00"', false);
         $this->put('/brands/'.$id, [...$brand, 'name' => 'Updated Gin'])->assertRedirect('/brands');
         $this->assertDatabaseHas('products', ['id' => $id, 'name' => 'Updated Gin']);
-        $drink = ['name' => 'Test Martini', 'ingredients' => [['product_id' => $id, 'volume_ml' => 45]]];
+        $drink = ['name' => 'Test Martini', 'drink_type' => 'signature', 'ingredients' => [['product_id' => $id, 'volume_ml' => 45]]];
         $this->post('/drinks', $drink)->assertRedirect('/drinks');
         $recipeId = DB::table('recipes')->where('name', 'Test Martini')->value('id');
-        $this->get('/drinks?edit='.$recipeId)->assertOk()->assertSee('Test Martini');
+        $this->assertDatabaseHas('recipes', ['id' => $recipeId, 'drink_type' => 'signature']);
+        $this->get('/drinks?edit='.$recipeId)->assertOk()->assertSee('Test Martini')->assertSee('Signature');
         $this->put('/drinks/'.$recipeId, [...$drink, 'ingredients' => [['product_id' => $id, 'volume_ml' => 60]]])->assertRedirect('/drinks');
         $this->assertDatabaseHas('recipe_ingredients', ['recipe_id' => $recipeId, 'volume_ml' => 60]);
         $this->delete('/brands/'.$id)->assertSessionHasErrors();

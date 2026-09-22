@@ -7,6 +7,7 @@
     <form class="pad catalogue-form" method="post" action="{{ $editing ? route('drinks.update', $editing->id) : route('drinks.store') }}">
         @csrf @if($editing) @method('PUT') @endif
         <label>Drink name<input name="name" maxlength="255" required value="{{ old('name', $editing?->name) }}"></label>
+        <label>Drink type<select name="drink_type" required><option value="classic" @selected(old('drink_type', $editing?->drink_type ?? 'classic') === 'classic')>Classic</option><option value="signature" @selected(old('drink_type', $editing?->drink_type) === 'signature')>Signature</option></select></label>
         <div class="recipe-editor"><h2>Ingredients per serving</h2>
             <div id="ingredients">
             @php($rows = old('ingredients', $editing ? $ingredients->get($editing->id, collect())->map(fn($i) => ['product_id' => $i->product_id, 'volume_ml' => $i->volume_ml])->all() : [['product_id' => '', 'volume_ml' => 30]]))
@@ -26,13 +27,14 @@
     @endif
     </section>
     <section class="card" style="margin-top:24px"><div class="pad"><h2>{{ $drinks->count() }} drinks</h2><input type="search" placeholder="Search drinks" aria-label="Search drinks" oninput="filterCatalogue(this.value)"></div>
-    <div class="table-wrap"><table><thead><tr><th>Drink</th><th>Recipe per serving</th><th>Actions</th></tr></thead><tbody>
+    <div class="spirit-filter-bar" role="radiogroup" aria-label="Filter cocktails by type"><span class="spirit-filter-title">Cocktail type</span><label class="spirit-filter-option"><input type="radio" name="cocktail-type-filter" value="" checked>All cocktails</label><label class="spirit-filter-option"><input type="radio" name="cocktail-type-filter" value="classic">Classic</label><label class="spirit-filter-option"><input type="radio" name="cocktail-type-filter" value="signature">Signature</label></div>
+    <div class="table-wrap"><table><thead><tr><th>Drink</th><th>Type</th><th>Recipe per serving</th><th>Actions</th></tr></thead><tbody>
     @forelse($drinks as $drink)
-        <tr data-catalogue-row><td>{{ $drink->name }}</td><td>@foreach($ingredients->get($drink->id, collect()) as $ingredient)<div>{{ $ingredient->name }} — {{ (float) $ingredient->volume_ml }} ml</div>@endforeach</td><td><div class="actions">
+        <tr data-catalogue-row data-drink-type="{{ $drink->drink_type }}"><td>{{ $drink->name }}</td><td>{{ ucfirst($drink->drink_type) }}</td><td>@foreach($ingredients->get($drink->id, collect()) as $ingredient)<div>{{ $ingredient->name }} — {{ (float) $ingredient->volume_ml }} ml</div>@endforeach</td><td><div class="actions">
             <a class="btn secondary" href="{{ route('drinks.index', ['edit' => $drink->id]) }}">Edit</a>
             <form method="post" action="{{ route('drinks.destroy', $drink->id) }}" onsubmit="return confirm('Delete this drink and its recipe?')">@csrf @method('DELETE')<button class="btn secondary">Delete</button></form>
         </div></td></tr>
-    @empty <tr><td colspan="3">Add your first drink above.</td></tr> @endforelse
+    @empty <tr><td colspan="4">Add your first drink above.</td></tr> @endforelse
     </tbody></table></div></section>
     <script>
     let ingredientIndex = {{ count($rows ?? []) }};
@@ -45,5 +47,9 @@
     function removeIngredient(button) {
         if (document.querySelectorAll('.ingredient-row').length > 1) button.closest('.ingredient-row').remove();
     }
+    document.querySelectorAll('input[name="cocktail-type-filter"]').forEach(input => input.addEventListener('change', () => {
+        if (!input.checked) return;
+        document.querySelectorAll('[data-catalogue-row]').forEach(row => row.hidden = Boolean(input.value) && row.dataset.drinkType !== input.value);
+    }));
     </script>
 </x-layouts.app>

@@ -28,7 +28,9 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        $request->session()->forget('active_module');
+
+        return redirect()->route('modules.index');
     }
 
     public function logout(Request $request)

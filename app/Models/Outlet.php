@@ -21,6 +21,11 @@ class Outlet extends Model
         return $this->hasMany(Product::class);
     }
 
+    public function foodIngredients(): HasMany
+    {
+        return $this->hasMany(FoodIngredient::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withPivot(['role', 'is_active'])->withTimestamps();

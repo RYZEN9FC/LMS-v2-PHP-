@@ -2,6 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CatalogueController;
+use App\Http\Controllers\FoodDashboardController;
+use App\Http\Controllers\FoodIngredientController;
+use App\Http\Controllers\FoodRecipeController;
+use App\Http\Controllers\FoodStockController;
+use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\OutletController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TeamController;
@@ -19,6 +24,8 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/modules', [ModuleController::class, 'index'])->name('modules.index');
+    Route::post('/modules', [ModuleController::class, 'select'])->name('modules.select');
     Route::view('/settings', 'settings.index')->name('settings.index');
     Route::get('/account/security', [AuthController::class, 'securityForm'])->name('account.security');
     Route::put('/account/password', [AuthController::class, 'updatePassword'])->name('account.password');
@@ -43,6 +50,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/uploads/excise', [UploadController::class, 'excise'])->name('uploads.excise');
         Route::post('/uploads/pos', [UploadController::class, 'pos'])->name('uploads.pos.preview');
         Route::post('/uploads/excise', [UploadController::class, 'excise'])->name('uploads.excise.preview');
+        Route::post('/uploads/pos/progress', [UploadController::class, 'posProgress'])->name('uploads.pos.progress');
+        Route::post('/uploads/excise/progress', [UploadController::class, 'exciseProgress'])->name('uploads.excise.progress');
         Route::post('/uploads/review', [UploadController::class, 'review'])->name('uploads.review');
         Route::post('/uploads/mapping', [UploadController::class, 'saveMapping'])->name('uploads.mapping');
         Route::post('/uploads/pos/apply', [UploadController::class, 'applyPos'])->name('uploads.pos.apply');
@@ -71,5 +80,28 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/team', [TeamController::class, 'index'])->name('team.index');
         Route::post('/team', [TeamController::class, 'store'])->name('team.store');
         Route::put('/team/{id}', [TeamController::class, 'update'])->name('team.update');
+    });
+
+    Route::prefix('food')->name('food.')->group(function (): void {
+        Route::middleware('outlet.permission:food.view')->group(function (): void {
+            Route::get('/', [FoodDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/stock', [FoodDashboardController::class, 'stock'])->name('stock.index');
+            Route::get('/ingredients', [FoodIngredientController::class, 'index'])->name('ingredients.index');
+            Route::get('/dishes', [FoodRecipeController::class, 'index'])->name('recipes.index');
+        });
+        Route::middleware('outlet.permission:food.stock.manage')->group(function (): void {
+            Route::get('/stock/add', [FoodStockController::class, 'create'])->name('stock.create');
+            Route::post('/stock/add', [FoodStockController::class, 'store'])->name('stock.store');
+            Route::get('/wastage', [FoodStockController::class, 'wastage'])->name('wastage.create');
+            Route::post('/wastage', [FoodStockController::class, 'storeWastage'])->name('wastage.store');
+        });
+        Route::middleware('outlet.permission:food.catalogue.manage')->group(function (): void {
+            Route::post('/ingredients', [FoodIngredientController::class, 'save'])->name('ingredients.store');
+            Route::put('/ingredients/{id}', [FoodIngredientController::class, 'save'])->name('ingredients.update');
+            Route::delete('/ingredients/{id}', [FoodIngredientController::class, 'delete'])->name('ingredients.destroy');
+            Route::post('/dishes', [FoodRecipeController::class, 'save'])->name('recipes.store');
+            Route::put('/dishes/{id}', [FoodRecipeController::class, 'save'])->name('recipes.update');
+            Route::delete('/dishes/{id}', [FoodRecipeController::class, 'delete'])->name('recipes.destroy');
+        });
     });
 });

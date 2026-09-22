@@ -73,4 +73,44 @@ class UploadPreviewTest extends TestCase
             ->assertSee('Action could not be completed')
             ->assertSee('The indent field must be a file of type: pdf.');
     }
+
+    public function test_excise_progress_upload_streams_real_row_counts_and_completion(): void
+    {
+        $this->seedAndSignIn();
+        $this->get('/uploads/excise')
+            ->assertOk()
+            ->assertSee('data-upload-progress-form', false)
+            ->assertSee(route('uploads.excise.progress'), false);
+
+        $file = new UploadedFile($this->sample('Proforma Indent 2.pdf'), 'Proforma Indent 2.pdf', 'application/pdf', null, true);
+        $response = $this->post('/uploads/excise/progress', ['indent' => $file], ['HTTP_ACCEPT' => 'application/x-ndjson']);
+        $response->assertOk()->assertHeader('content-type', 'application/x-ndjson; charset=UTF-8');
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('"event":"progress","processed":0,"total":9', $content);
+        $this->assertStringContainsString('"event":"progress","processed":9,"total":9,"percent":100', $content);
+        $this->assertStringContainsString('"event":"complete"', $content);
+        $this->assertDatabaseCount('upload_documents', 1);
+        $this->assertDatabaseCount('upload_rows', 9);
+    }
+
+    public function test_pos_progress_upload_reaches_the_workbooks_real_total_row_count(): void
+    {
+        $this->seedAndSignIn();
+        $name = 'item_wise_sales_report_FROM_10 Jul 2026_TO_22 Aug 2026_Fetched On_23 Aug 2026_BY_sip-society.xlsx';
+        $file = new UploadedFile($this->sample($name), $name, null, null, true);
+        $response = $this->post('/uploads/pos/progress', ['report' => $file], ['HTTP_ACCEPT' => 'application/x-ndjson']);
+        $response->assertOk();
+        $events = collect(explode("\n", trim($response->streamedContent())))
+            ->map(fn ($line) => json_decode($line, true))
+            ->filter(fn ($event) => is_array($event));
+        $progress = $events->where('event', 'progress')->values();
+
+        $this->assertGreaterThan(0, $progress->first()['total']);
+        $this->assertSame(0, $progress->first()['processed']);
+        $this->assertSame($progress->last()['total'], $progress->last()['processed']);
+        $this->assertSame(100, $progress->last()['percent']);
+        $this->assertTrue($events->contains('event', 'complete'));
+        $this->assertDatabaseCount('upload_rows', 141);
+    }
 }

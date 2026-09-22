@@ -82,7 +82,7 @@ class ReportController extends Controller
         $report = $this->reports->interval($outlet, $from, $to);
 
         return Pdf::loadView('reports.interval-pdf', compact('outlet', 'from', 'to', 'report'))
-            ->setPaper('a3', 'landscape')
+            ->setPaper('a4', 'landscape')
             ->download('stock-movement-'.$from->toDateString().'-to-'.$to->toDateString().'.pdf');
     }
 

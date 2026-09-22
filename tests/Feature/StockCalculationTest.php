@@ -101,11 +101,15 @@ class StockCalculationTest extends TestCase
             file_put_contents($path, $response->streamedContent());
             $book = IOFactory::load($path);
             $sheet = $book->getActiveSheet();
-            $this->assertSame('s', $sheet->getCell('A6')->getDataType());
-            $this->assertSame('=1+1', $sheet->getCell('A6')->getValue());
-            $this->assertSame('n', $sheet->getCell('C6')->getDataType());
-            $this->assertSame('n', $sheet->getCell('F6')->getDataType());
-            $this->assertEquals(100, $sheet->getCell('F6')->getValue());
+            $this->assertSame('Item', $sheet->getCell('A6')->getValue());
+            $this->assertSame('Bottle size', $sheet->getCell('B6')->getValue());
+            $this->assertSame('Bottles + ml', $sheet->getCell('C6')->getValue());
+            $this->assertSame('Landing price', $sheet->getCell('D6')->getValue());
+            $this->assertSame('s', $sheet->getCell('A7')->getDataType());
+            $this->assertSame('=1+1', $sheet->getCell('A7')->getValue());
+            $this->assertSame('n', $sheet->getCell('B7')->getDataType());
+            $this->assertSame('n', $sheet->getCell('E7')->getDataType());
+            $this->assertEquals(100, $sheet->getCell('E7')->getValue());
             $book->disconnectWorksheets();
         } finally {
             unlink($path);

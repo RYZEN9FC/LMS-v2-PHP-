@@ -8,7 +8,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class PosPreviewParser
 {
-    public function parse(string $path): array
+    public function parse(string $path, ?callable $progress = null): array
     {
         $items = [];
         $sheets = [];
@@ -17,7 +17,18 @@ class PosPreviewParser
         $sourceRows = 0;
         $excluded = 0;
         $excludedNonLiquor = 0;
-        foreach ((new SpreadsheetRows)->sheets($path) as $sheet => $rows) {
+        $spreadsheets = new SpreadsheetRows;
+        $supportedSheetKeys = ['itemwisesalesreport', 'itemwisecomplimentaryreport', 'itemwisenonchargeablereport', 'itemwisecustomerreport'];
+        $totalRows = array_sum(array_filter(
+            $spreadsheets->rowCounts($path),
+            fn ($count, $sheet) => in_array(strtolower(preg_replace('/[^a-z0-9]/i', '', $sheet)), $supportedSheetKeys, true),
+            ARRAY_FILTER_USE_BOTH
+        ));
+        $processedRows = 0;
+        if ($progress) {
+            $progress(0, $totalRows);
+        }
+        foreach ($spreadsheets->sheets($path) as $sheet => $rows) {
             $sheetKey = strtolower(preg_replace('/[^a-z0-9]/i', '', $sheet));
             $kind = match ($sheetKey) {
                 'itemwisesalesreport' => 'sold',
@@ -35,6 +46,10 @@ class PosPreviewParser
             $sum = $sumAmount = 0;
             $footer = null;
             foreach ($rows as $rowNumber => $row) {
+                $processedRows++;
+                if ($progress) {
+                    $progress($processedRows, $totalRows);
+                }
                 $normal = array_map(fn ($v) => strtoupper(trim((string) $v)), $row);
                 if (! $headers) {
                     if (($normal[0] ?? '') === 'START DATE') {
@@ -158,6 +173,9 @@ class PosPreviewParser
             $item['unit_price'] = $item['sold'] > 0 ? $item['sold_amount'] / $item['sold'] : null;
         }
         unset($item);
+        if ($progress) {
+            $progress($totalRows, $totalRows);
+        }
 
         return ['from' => $from, 'to' => $to, 'sheets' => $sheets, 'granularity' => $detailed ? 'daily' : 'period',
             'items' => count($items), 'lines' => array_values($items), 'source_rows' => $sourceRows, 'excluded_rows' => $excluded,

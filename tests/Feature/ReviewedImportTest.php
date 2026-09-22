@@ -104,7 +104,7 @@ class ReviewedImportTest extends TestCase
         $this->assertEquals(1980, $brand->movements()->sum('volume_ml'));
         $this->assertDatabaseHas('import_lines', ['product_id' => $brand->id, 'sale_type' => 'full_bottle', 'quantity' => 4, 'line_value' => 400]);
         $this->get('/uploads/pos')->assertOk()->assertDontSee('POS preview');
-        $this->get('/uploads/history')->assertOk()->assertSee('brands', false);
+        $this->get('/uploads/history')->assertOk()->assertSee('brands', false)->assertSee('TEST-001');
     }
 
     public function test_bucket_measured_and_cocktail_rules_are_used_instead_of_names(): void

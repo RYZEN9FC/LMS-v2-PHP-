@@ -44,10 +44,10 @@ class CurrentOutlet
     public function allows(string $permission): bool
     {
         $permissions = [
-            'owner' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view', 'catalogue.manage', 'team.manage'],
-            'manager' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view', 'catalogue.manage'],
-            'operator' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view'],
-            'viewer' => ['reports.view', 'imports.view'],
+            'owner' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view', 'catalogue.manage', 'team.manage', 'food.view', 'food.stock.manage', 'food.catalogue.manage'],
+            'manager' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view', 'catalogue.manage', 'food.view', 'food.stock.manage', 'food.catalogue.manage'],
+            'operator' => ['reports.view', 'imports.view', 'imports.manage', 'catalogue.view', 'food.view', 'food.stock.manage'],
+            'viewer' => ['reports.view', 'imports.view', 'food.view'],
         ];
 
         return in_array($permission, $permissions[$this->role()] ?? [], true);

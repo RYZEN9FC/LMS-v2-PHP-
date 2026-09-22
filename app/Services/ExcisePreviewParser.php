@@ -7,7 +7,7 @@ use Smalot\PdfParser\Parser;
 
 class ExcisePreviewParser
 {
-    public function parse(string $path): array
+    public function parse(string $path, ?callable $progress = null): array
     {
         $pdf = (new Parser)->parseFile($path);
         $text = preg_replace('/\s+/u', ' ', $pdf->getText());
@@ -16,6 +16,7 @@ class ExcisePreviewParser
         $bottleIndent = stripos($text, 'Bottle Indent') !== false;
         $items = [];
         $allText = '';
+        $pageRows = [];
         foreach ($pdf->getPages() as $page) {
             $entries = array_map(fn ($entry) => ['x' => (float) $entry[0][4], 'y' => (float) $entry[0][5], 'text' => (string) $entry[1]], $page->getDataTm());
             $allText .= "\n".$this->join($entries, ' ');
@@ -27,6 +28,16 @@ class ExcisePreviewParser
             }
             krsort($anchors, SORT_NUMERIC);
             $anchors = array_map(fn ($group) => ['y' => $group[0]['y'], 'number' => (int) $this->join($group)], array_values($anchors));
+            $pageRows[] = compact('entries', 'anchors');
+        }
+        $totalRows = array_sum(array_map(fn ($page) => count($page['anchors']), $pageRows));
+        $processedRows = 0;
+        if ($progress) {
+            $progress(0, $totalRows);
+        }
+        foreach ($pageRows as $page) {
+            $entries = $page['entries'];
+            $anchors = $page['anchors'];
             foreach ($anchors as $index => $anchor) {
                 $upper = isset($anchors[$index - 1]) ? ($anchors[$index - 1]['y'] + $anchor['y']) / 2 : $anchor['y'] + 35;
                 $lower = isset($anchors[$index + 1]) ? ($anchors[$index + 1]['y'] + $anchor['y']) / 2 : $anchor['y'] - 45;
@@ -72,6 +83,11 @@ class ExcisePreviewParser
                 $items[] = ['number' => $anchor['number'], 'code' => $code.trim($size['text']).trim($packType['text']), 'name' => $name,
                     'size_ml' => $sizeMl, 'cases' => $cases, 'loose_bottles' => $loose, 'bottles_per_case' => (int) $match[1],
                     'bottles' => (int) $bottles, 'volume_ml' => $bottles * $sizeMl, 'amount' => $amount, 'bottle_price' => $amount / $bottles];
+                if ($progress) {
+                    $progress(++$processedRows, $totalRows);
+                } else {
+                    $processedRows++;
+                }
             }
         }
         preg_match('/Invoice\s*V\s*alue\s*:\s*([\d,.]+)/i', $allText, $invoice);
@@ -85,6 +101,9 @@ class ExcisePreviewParser
         $invoiceValue = (float) str_replace(',', '', $invoice[1]);
         if (abs(array_sum(array_column($items, 'amount')) - $invoiceValue) > 0.011) {
             $this->fail('Extracted item amounts do not reconcile with the invoice total. No stock has been changed.');
+        }
+        if ($progress) {
+            $progress($totalRows, $totalRows);
         }
 
         return ['pages' => count($pdf->getPages()), 'indent_number' => $number[0], 'date' => $date[1], 'invoice_value' => $invoiceValue,

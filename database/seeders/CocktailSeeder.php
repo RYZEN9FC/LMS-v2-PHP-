@@ -87,9 +87,11 @@ class CocktailSeeder extends Seeder
         ];
 
         DB::transaction(function () use ($outlet, $products, $cocktails): void {
+            $signatureCocktails = ['Dill With It!', 'Kiraak Kaapi', 'Lite Lo', 'Meloni', 'Miyaa Martini', 'Moonfire', 'Sip in Peace', 'The OG', 'Wild Tea'];
             foreach ($cocktails as $name => $ingredients) {
                 $recipe = DB::table('recipes')->where('outlet_id', $outlet->id)->where('name', $name)->first();
                 if ($recipe) {
+                    DB::table('recipes')->where('id', $recipe->id)->update(['drink_type' => in_array($name, $signatureCocktails, true) ? 'signature' : 'classic']);
                     continue;
                 }
 
@@ -105,6 +107,7 @@ class CocktailSeeder extends Seeder
                 $recipeId = DB::table('recipes')->insertGetId([
                     'outlet_id' => $outlet->id,
                     'name' => $name,
+                    'drink_type' => in_array($name, $signatureCocktails, true) ? 'signature' : 'classic',
                     'is_active' => true,
                     'created_at' => now(),
                     'updated_at' => now(),

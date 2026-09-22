@@ -127,11 +127,13 @@ class CatalogueController extends Controller
     public function saveDrink(Request $request, ?int $id = null)
     {
         $outlet = $this->outlet();
+        $request->mergeIfMissing(['drink_type' => 'classic']);
         if ($id) {
             abort_unless(DB::table('recipes')->where('outlet_id', $outlet)->where('id', $id)->exists(), 404);
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('recipes')->where('outlet_id', $outlet)->ignore($id)],
+            'drink_type' => ['required', Rule::in(['classic', 'signature'])],
             'ingredients' => ['required', 'array', 'min:1', 'max:50'],
             'ingredients.*.product_id' => ['required', 'integer', 'distinct', Rule::exists('products', 'id')->where('outlet_id', $outlet)],
             'ingredients.*.volume_ml' => ['required', 'numeric', 'min:0.01', 'max:100000', 'decimal:0,2'],
@@ -139,10 +141,10 @@ class CatalogueController extends Controller
         DB::transaction(function () use ($data, $outlet, $id) {
             Outlet::whereKey($outlet)->lockForUpdate()->firstOrFail();
             if ($id) {
-                DB::table('recipes')->where('id', $id)->update(['name' => $data['name'], 'updated_at' => now()]);
+                DB::table('recipes')->where('id', $id)->update(['name' => $data['name'], 'drink_type' => $data['drink_type'], 'updated_at' => now()]);
                 DB::table('recipe_ingredients')->where('recipe_id', $id)->delete();
             } else {
-                $id = DB::table('recipes')->insertGetId(['name' => $data['name'], 'outlet_id' => $outlet, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
+                $id = DB::table('recipes')->insertGetId(['name' => $data['name'], 'drink_type' => $data['drink_type'], 'outlet_id' => $outlet, 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
             }
             foreach ($data['ingredients'] as $ingredient) {
                 DB::table('recipe_ingredients')->insert(['recipe_id' => $id, 'product_id' => $ingredient['product_id'], 'volume_ml' => $ingredient['volume_ml'], 'created_at' => now(), 'updated_at' => now()]);

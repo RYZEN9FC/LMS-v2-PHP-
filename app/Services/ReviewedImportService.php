@@ -245,9 +245,11 @@ class ReviewedImportService
             if (! hash_equals($review['review_key'], $reviewKey)) {
                 $this->fail('Stock, mapping or recipe changed after review. Review the submission again.');
             }
+            $sourceMetadata = json_decode($document->metadata ?? '{}', true);
             $importId = DB::table('imports')->insertGetId(['outlet_id' => $outletId, 'source_type' => $source, 'file_name' => $document->file_name,
                 'fingerprint' => hash('sha256', $id.'|'.implode(',', $rowIds)), 'effective_from' => $document->effective_from, 'effective_to' => $document->effective_to,
                 'status' => 'applied', 'row_count' => count($rowIds), 'metadata' => json_encode(['document_id' => $id, 'granularity' => $document->granularity, 'ignored' => $review['ignored'],
+                    'indent_number' => $source === 'excise' ? ($sourceMetadata['indent_number'] ?? null) : null,
                     'selected_row_ids' => $rowIds, 'review' => $review['summary']]), 'created_at' => now(), 'updated_at' => now()]);
             foreach ($review['plans'] as $plan) {
                 $volume = array_sum(array_column($plan['movements'], 'volume_ml'));

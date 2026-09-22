@@ -4,8 +4,8 @@
         <form class="filter" method="get">
             <label>As at <input type="date" name="as_at" value="{{ $asAt->toDateString() }}"></label>
             <button class="btn secondary" type="submit">Refresh</button>
-            <a class="btn secondary" href="{{ route('reports.current.excel', ['as_at' => $asAt->toDateString()]) }}">Download Excel</a>
-            <a class="btn" href="{{ route('reports.current.pdf', ['as_at' => $asAt->toDateString()]) }}">Download PDF</a>
+            <a class="btn secondary" data-file-download href="{{ route('reports.current.excel', ['as_at' => $asAt->toDateString()]) }}">Download Excel</a>
+            <a class="btn" data-file-download href="{{ route('reports.current.pdf', ['as_at' => $asAt->toDateString()]) }}">Download PDF</a>
         </form>
     </div>
     @if($periodNotice)<p class="note" style="margin-bottom:16px">{{ $periodNotice }}</p>@endif
