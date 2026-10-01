@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FoodIngredient;
+use App\Models\FoodStockMovement;
 use App\Models\Outlet;
 use App\Support\CurrentOutlet;
 use Illuminate\Http\Request;
@@ -41,7 +42,9 @@ class FoodIngredientController extends Controller
             'base_unit' => ['required', Rule::in(self::BASE_UNITS)],
             'purchase_unit' => ['required', 'string', 'max:32'],
             'purchase_to_base' => ['required', 'numeric', 'min:0.001', 'max:100000000', 'decimal:0,4'],
-            'low_stock_base' => ['nullable', 'numeric', 'min:0', 'max:100000000', 'decimal:0,3'],
+            'opening_quantity' => [$id ? 'prohibited' : 'nullable', 'numeric', 'min:0', 'max:100000000', 'decimal:0,3'],
+            'opening_purchase_rate' => [$id ? 'prohibited' : Rule::requiredIf(fn () => (float) $request->input('opening_quantity', 0) > 0), 'nullable', 'numeric', 'min:0', 'max:1000000000', 'decimal:0,2'],
+            'opening_date' => [$id ? 'prohibited' : Rule::requiredIf(fn () => (float) $request->input('opening_quantity', 0) > 0), 'nullable', 'date_format:Y-m-d'],
         ]);
         $locked = $ingredient->exists && ($ingredient->movements()->exists()
             || DB::table('food_recipe_ingredients')->where('food_ingredient_id', $ingredient->id)->exists());
@@ -49,12 +52,33 @@ class FoodIngredientController extends Controller
             || (float) $ingredient->purchase_to_base !== (float) $data['purchase_to_base'])) {
             throw ValidationException::withMessages(['purchase_unit' => 'Units cannot be changed after this ingredient is used. Create a separate ingredient if its purchase format changed.']);
         }
-        $ingredient->fill([
-            'name' => $data['name'], 'category' => $data['category'] ?: null,
-            'base_unit' => $data['base_unit'], 'purchase_unit' => trim($data['purchase_unit']),
-            'purchase_to_base' => $data['purchase_to_base'],
-            'low_stock_base' => $data['low_stock_base'] ?? null, 'is_active' => true,
-        ])->save();
+        DB::transaction(function () use ($ingredient, $data, $outlet, $id) {
+            Outlet::whereKey($outlet)->lockForUpdate()->firstOrFail();
+            $ingredient->fill([
+                'name' => $data['name'], 'category' => $data['category'] ?: null,
+                'base_unit' => $data['base_unit'], 'purchase_unit' => trim($data['purchase_unit']),
+                'purchase_to_base' => $data['purchase_to_base'], 'is_active' => true,
+            ])->save();
+
+            $openingQuantity = (float) ($data['opening_quantity'] ?? 0);
+            if ($id || $openingQuantity <= 0) {
+                return;
+            }
+
+            $quantityBase = round($openingQuantity * (float) $ingredient->purchase_to_base, 3);
+            $openingValue = round($openingQuantity * (float) $data['opening_purchase_rate'], 2);
+            FoodStockMovement::create([
+                'outlet_id' => $outlet,
+                'food_ingredient_id' => $ingredient->id,
+                'entered_by' => auth()->id(),
+                'effective_date' => $data['opening_date'],
+                'movement_type' => 'opening',
+                'quantity_base' => $quantityBase,
+                'unit_cost_per_base' => $openingValue / $quantityBase,
+                'value_change' => $openingValue,
+                'reference' => 'Opening food stock setup',
+            ]);
+        });
 
         return redirect()->route('food.ingredients.index')->with('status', 'Ingredient saved.');
     }

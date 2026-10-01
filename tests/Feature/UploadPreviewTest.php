@@ -45,6 +45,10 @@ class UploadPreviewTest extends TestCase
     public function test_real_pos_upload_reads_all_three_quantity_sheets(): void
     {
         $this->seedAndSignIn();
+        $this->get('/uploads/pos')
+            ->assertOk()
+            ->assertSee('Selection starts processing automatically')
+            ->assertDontSee('Upload and preview');
         $name = 'item_wise_sales_report_FROM_10 Jul 2026_TO_22 Aug 2026_Fetched On_23 Aug 2026_BY_sip-society.xlsx';
         $file = new UploadedFile($this->sample($name), $name, null, null, true);
         $this->followingRedirects()->post('/uploads/pos', ['report' => $file])
@@ -80,7 +84,9 @@ class UploadPreviewTest extends TestCase
         $this->get('/uploads/excise')
             ->assertOk()
             ->assertSee('data-upload-progress-form', false)
-            ->assertSee(route('uploads.excise.progress'), false);
+            ->assertSee(route('uploads.excise.progress'), false)
+            ->assertSee('Selection starts processing automatically')
+            ->assertDontSee('Upload and preview');
 
         $file = new UploadedFile($this->sample('Proforma Indent 2.pdf'), 'Proforma Indent 2.pdf', 'application/pdf', null, true);
         $response = $this->post('/uploads/excise/progress', ['indent' => $file], ['HTTP_ACCEPT' => 'application/x-ndjson']);
@@ -92,6 +98,26 @@ class UploadPreviewTest extends TestCase
         $this->assertStringContainsString('"event":"complete"', $content);
         $this->assertDatabaseCount('upload_documents', 1);
         $this->assertDatabaseCount('upload_rows', 9);
+    }
+
+    public function test_safari_macos_indent_progress_upload_uses_fallback_parser(): void
+    {
+        $this->seedAndSignIn();
+        $path = dirname(base_path()).'/Indents and Bills for testing/Full indents from start to 8th sep/September 19th.pdf';
+        if (! is_file($path)) {
+            $this->markTestSkipped('Local Safari/macOS indent is unavailable.');
+        }
+
+        $file = new UploadedFile($path, 'September 19th.pdf', 'application/pdf', null, true);
+        $response = $this->post('/uploads/excise/progress', ['indent' => $file], ['HTTP_ACCEPT' => 'application/x-ndjson']);
+        $response->assertOk();
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('"event":"progress","processed":0,"total":13', $content);
+        $this->assertStringContainsString('"event":"progress","processed":13,"total":13,"percent":100', $content);
+        $this->assertStringContainsString('"event":"complete"', $content);
+        $this->assertDatabaseCount('upload_documents', 1);
+        $this->assertDatabaseCount('upload_rows', 13);
     }
 
     public function test_pos_progress_upload_reaches_the_workbooks_real_total_row_count(): void

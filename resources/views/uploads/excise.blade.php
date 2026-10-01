@@ -2,7 +2,7 @@
     <div class="page-head"><div><h1>Excise indent upload</h1><p class="sub">Upload the Telangana Proforma Indent PDF for stock refills.</p></div></div>
     <section class="card upload-card">
         <div class="pad"><h2>Upload Proforma Indent</h2><p class="sub">Supported format: PDF. The indent number, date, bottle quantities and purchase values are read from the document.</p></div>
-        <div class="upload-body"><form method="post" enctype="multipart/form-data" data-upload-progress-form data-progress-url="{{ route('uploads.excise.progress') }}">@csrf<label class="drop-zone"><input type="file" name="indent" accept="application/pdf,.pdf" required><span>Select Excise PDF</span><small data-file-name>Proforma Indent PDF</small></label><button class="btn" type="submit" style="margin-top:16px">Upload and preview</button>@include('components.upload-progress')</form><p class="note">Nothing changes stock at this stage. The indent identity is read and checked.</p></div>
+        <div class="upload-body"><form method="post" enctype="multipart/form-data" data-upload-progress-form data-progress-url="{{ route('uploads.excise.progress') }}">@csrf<label class="drop-zone"><input type="file" name="indent" accept="application/pdf,.pdf" required><span>Select Excise PDF</span><small data-file-name>Selection starts processing automatically</small></label>@include('components.upload-progress')</form><p class="note">Nothing changes stock at this stage. The indent identity is read and checked.</p></div>
     </section>
     @if($preview)
     <section class="card" style="margin-top:16px">

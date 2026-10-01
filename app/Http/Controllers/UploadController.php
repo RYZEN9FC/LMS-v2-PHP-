@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Services\ExcisePreviewParser;
+use App\Services\ExcisePreviewParserRouter;
 use App\Services\PosPreviewParser;
 use App\Services\ReviewedImportService;
 use App\Support\CurrentOutlet;
@@ -20,7 +20,7 @@ class UploadController extends Controller
         return $this->preview($request, $parser, $imports, 'report', 'xlsx,xls', 'pos');
     }
 
-    public function excise(Request $request, ExcisePreviewParser $parser, ReviewedImportService $imports)
+    public function excise(Request $request, ExcisePreviewParserRouter $parser, ReviewedImportService $imports)
     {
         return $this->preview($request, $parser, $imports, 'indent', 'pdf', 'excise');
     }
@@ -30,7 +30,7 @@ class UploadController extends Controller
         return $this->progressPreview($request, $parser, $imports, 'report', 'xlsx,xls', 'pos');
     }
 
-    public function exciseProgress(Request $request, ExcisePreviewParser $parser, ReviewedImportService $imports)
+    public function exciseProgress(Request $request, ExcisePreviewParserRouter $parser, ReviewedImportService $imports)
     {
         return $this->progressPreview($request, $parser, $imports, 'indent', 'pdf', 'excise');
     }

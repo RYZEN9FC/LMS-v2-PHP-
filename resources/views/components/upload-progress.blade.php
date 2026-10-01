@@ -27,7 +27,9 @@
     const track = panel.querySelector('[role=progressbar]');
     const bar = panel.querySelector('[data-upload-progress-bar]');
     const submit = form.querySelector('[type=submit]');
+    const fileInput = form.querySelector('input[type=file]');
     let completed = false;
+    let uploading = false;
 
     const update = (value, heading, message) => {
         const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
@@ -39,19 +41,22 @@
     };
     const fail = message => {
         completed = true;
+        uploading = false;
         update(0, 'Upload stopped', message);
         panel.classList.add('has-error');
-        submit.disabled = false;
+        if (submit) submit.disabled = false;
+        if (fileInput) fileInput.value = '';
         window.notify?.({type:'error', title:'Action could not be completed', message});
     };
 
     form.addEventListener('submit', event => {
         event.preventDefault();
-        if (!form.reportValidity()) return;
+        if (uploading || !form.reportValidity()) return;
+        uploading = true;
         completed = false;
         panel.hidden = false;
         panel.classList.remove('has-error');
-        submit.disabled = true;
+        if (submit) submit.disabled = true;
         update(0, 'Uploading file…', 'Waiting to read rows');
 
         const xhr = new XMLHttpRequest();
@@ -118,6 +123,10 @@
         xhr.addEventListener('error', () => fail('The connection was interrupted. No stock was changed.'));
         xhr.addEventListener('abort', () => fail('The upload was cancelled. No stock was changed.'));
         xhr.send(new FormData(form));
+    });
+
+    fileInput?.addEventListener('change', () => {
+        if (fileInput.files?.length && !uploading) form.requestSubmit();
     });
 })();
 </script>

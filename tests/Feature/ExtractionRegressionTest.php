@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\ExcisePreviewParser;
+use App\Services\ExcisePreviewParserRouter;
 use App\Services\PosPreviewParser;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -68,7 +69,10 @@ class ExtractionRegressionTest extends TestCase
 
     public function test_all_supplied_indents_reconcile_and_keep_pack_identity(): void
     {
-        $files = glob(dirname(base_path()).'/Indents and Bills for testing/Full indents from start to 8th sep/*.pdf');
+        $files = array_values(array_filter(
+            glob(dirname(base_path()).'/Indents and Bills for testing/Full indents from start to 8th sep/*.pdf'),
+            fn ($file) => basename($file) !== 'September 19th.pdf'
+        ));
         if (! $files) {
             $this->markTestSkipped('Local source documents unavailable.');
         }
@@ -90,6 +94,27 @@ class ExtractionRegressionTest extends TestCase
                 $this->assertSame('1984QMG', $data['lines'][0]['code']);
             }
         }
+    }
+
+    public function test_safari_macos_indent_uses_fallback_parser_and_reconciles(): void
+    {
+        $file = dirname(base_path()).'/Indents and Bills for testing/Full indents from start to 8th sep/September 19th.pdf';
+        if (! is_file($file)) {
+            $this->markTestSkipped('Local Safari/macOS indent is unavailable.');
+        }
+
+        $data = app(ExcisePreviewParserRouter::class)->parse($file);
+
+        $this->assertSame('IND2026DEPOLD002232893', $data['indent_number']);
+        $this->assertSame('19-SEP-26', $data['date']);
+        $this->assertSame(441159.0, $data['invoice_value']);
+        $this->assertSame(500925.0, $data['net_value']);
+        $this->assertCount(13, $data['lines']);
+        $this->assertSame(1884, $data['bottles']);
+        $this->assertSame('5117UPG', $data['lines'][0]['code']);
+        $this->assertSame('HOEGAARDEN BELGIAN WITBIER', $data['lines'][0]['name']);
+        $this->assertSame('0547QMG', $data['lines'][12]['code']);
+        $this->assertEqualsWithDelta($data['invoice_value'], array_sum(array_column($data['lines'], 'amount')), 0.01);
     }
 
     public function test_all_supplied_pos_formats(): void

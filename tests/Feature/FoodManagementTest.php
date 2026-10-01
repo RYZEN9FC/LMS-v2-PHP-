@@ -16,7 +16,7 @@ class FoodManagementTest extends TestCase
         return FoodIngredient::create([
             'outlet_id' => 1, 'name' => $name, 'category' => 'Meat', 'base_unit' => 'g',
             'purchase_unit' => 'kg', 'purchase_to_base' => 1000,
-            'low_stock_base' => 500, 'is_active' => true,
+            'is_active' => true,
         ]);
     }
 
@@ -35,17 +35,21 @@ class FoodManagementTest extends TestCase
         $this->post('/food/ingredients', [
             'name' => 'Chicken Breast', 'category' => 'Meat', 'base_unit' => 'g',
             'purchase_unit' => 'kg', 'purchase_to_base' => 1000,
-            'low_stock_base' => 500,
+            'opening_quantity' => 5, 'opening_purchase_rate' => 480, 'opening_date' => '2026-09-21',
         ])->assertRedirect('/food/ingredients');
         $ingredient = FoodIngredient::where('name', 'Chicken Breast')->firstOrFail();
+        $this->assertDatabaseHas('food_stock_movements', [
+            'food_ingredient_id' => $ingredient->id, 'movement_type' => 'opening',
+            'quantity_base' => 5000, 'value_change' => 2400,
+        ]);
 
         $this->postJson('/food/stock/add', [
             'ingredient_name' => 'chicken breast', 'quantity' => 2, 'purchase_rate' => 500, 'effective_date' => '2026-09-22',
-        ])->assertOk()->assertJsonPath('movement_id', 1);
+        ])->assertOk()->assertJsonPath('movement_id', 2);
         $this->assertDatabaseHas('food_stock_movements', [
             'food_ingredient_id' => $ingredient->id, 'quantity_base' => 2000, 'value_change' => 1000,
         ]);
-        $this->get('/food/stock?as_at=2026-09-22')->assertOk()->assertSee('2 kg')->assertSee('₹1,000.00');
+        $this->get('/food/stock?as_at=2026-09-22')->assertOk()->assertSee('7 kg')->assertSee('₹3,400.00');
     }
 
     public function test_quick_stock_rejects_negative_zero_unknown_and_cross_outlet_ingredients(): void
@@ -97,7 +101,7 @@ class FoodManagementTest extends TestCase
 
         $this->get('/food?from=2026-09-22&to=2026-09-22')->assertOk()
             ->assertSee('₹1,000.00')->assertSee('₹350.00')->assertSee('₹650.00')
-            ->assertSee('₹700.00')->assertSee('5.0%');
+            ->assertSee('₹700.00')->assertSee('5.0%')->assertDontSee('Low-stock ingredients');
     }
 
     public function test_wastage_uses_available_stock_cost_and_cannot_make_stock_negative(): void

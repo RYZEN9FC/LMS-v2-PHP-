@@ -10,14 +10,13 @@ class FoodIngredient extends Model
 {
     protected $fillable = [
         'outlet_id', 'name', 'category', 'base_unit', 'purchase_unit', 'purchase_to_base',
-        'low_stock_base', 'is_active',
+        'is_active',
     ];
 
     protected function casts(): array
     {
         return [
             'purchase_to_base' => 'decimal:4',
-            'low_stock_base' => 'decimal:3',
             'is_active' => 'boolean',
         ];
     }

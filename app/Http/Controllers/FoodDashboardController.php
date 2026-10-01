@@ -27,10 +27,6 @@ class FoodDashboardController extends Controller
         $marginWithoutWastage = $grossSales - $recipeCost;
         $percent = fn (float $value): float => $grossSales > 0 ? round($value / $grossSales * 100, 1) : 0;
 
-        $ingredients = $this->stockQuery($outlet, $to)->get();
-        $lowStock = $ingredients->filter(fn ($ingredient) => $ingredient->low_stock_base !== null
-            && (float) $ingredient->stock_base <= (float) $ingredient->low_stock_base)->values();
-
         $metrics = [
             'gross_sales' => $grossSales,
             'total_food_cost' => $totalFoodCost,
@@ -43,7 +39,7 @@ class FoodDashboardController extends Controller
             'wastage_percent' => $percent($wastageCost),
         ];
 
-        return view('food.dashboard', compact('metrics', 'from', 'to', 'lowStock'));
+        return view('food.dashboard', compact('metrics', 'from', 'to'));
     }
 
     public function stock(Request $request)
